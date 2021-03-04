@@ -1,5 +1,6 @@
 package vn.com.vnext.books.management.controller;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -8,9 +9,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.com.vnext.books.management.model.Book;
 import vn.com.vnext.books.management.repository.BookRepository;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:8081")
@@ -28,6 +31,13 @@ public class BookController {
         }
 
         return Sort.Direction.ASC;
+    }
+
+    // Forwards all routes to FrontEnd except: '/', '/index.html', '/api', '/api/**'
+    // Required because of 'mode: history' usage in frontend routing, see README for further details
+    @RequestMapping(value = "{_:^(?!index\\.html|api).$}")
+    public String redirectApi() {
+        return "forward:/";
     }
 
     @GetMapping("/sortedbooks")
@@ -84,7 +94,6 @@ public class BookController {
 
             List<Book> books = new ArrayList<Book>();
             Pageable pagingSort = PageRequest.of(page, size, Sort.by(orders));
-
             Page<Book> pageTuts;
             if (title == null)
                 pageTuts = bookRepository.findAll(pagingSort);
@@ -141,10 +150,19 @@ public class BookController {
     }
 
     @PostMapping("/books")
-    public ResponseEntity<Book> createBook(@RequestBody Book book) {
+    public ResponseEntity<Book> createBook(@RequestBody ObjectNode json) {
         try {
-            Book _book = bookRepository.save(new Book(book.getTitle(), book.getAuthor(), book.getDescription(), false));
-            return new ResponseEntity<>(_book, HttpStatus.CREATED);
+            Book book = new Book();
+            book.setTitle(json.get("title").textValue());
+            book.setAuthor(json.get("author").textValue());
+            book.setDescription(json.get("description").textValue());
+            String base64 = json.get("data").textValue();
+            System.out.println(base64);
+            byte[] decodedBytes = Base64.getMimeDecoder().decode(base64.split(",")[1]);
+            book.setData(decodedBytes);
+            Book _book = bookRepository.save(book);
+            //Book _book = bookRepository.save(new Book(book.getTitle(), book.getAuthor(), book.getDescription(), false, book.getData()));
+            return new ResponseEntity<>(null, HttpStatus.CREATED);
         } catch (Exception e) {
                 return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -159,6 +177,7 @@ public class BookController {
             _book.setTitle(book.getTitle());
             _book.setDescription(book.getDescription());
             _book.setPublished(book.isPublished());
+            _book.setData(book.getData());
             return new ResponseEntity<>(bookRepository.save(_book), HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);

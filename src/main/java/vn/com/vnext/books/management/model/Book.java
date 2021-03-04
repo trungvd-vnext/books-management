@@ -22,14 +22,19 @@ public class Book {
     @Column(name = "published")
     private boolean published;
 
+    @Column(name = "data")
+    @Lob
+    private byte[] data;
+
     public Book() {
     }
 
-    public Book(String title, String author, String description, boolean published) {
+    public Book(String title, String author, String description, boolean published, byte[] data) {
         this.title = title;
         this.author = author;
         this.description = description;
         this.published = published;
+        this.data = data;
     }
 
     public long getId() {
@@ -66,6 +71,14 @@ public class Book {
 
     public void setPublished(boolean published) {
         this.published = published;
+    }
+
+    public byte[] getData() {
+        return data;
+    }
+
+    public void setData(byte[] data) {
+        this.data = data;
     }
 
     @Override
